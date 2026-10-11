@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Bodycam Camera",
+	"Description": "Chest-mounted bodycam first-person camera: spring-based rotation lag, locomotion bob, impulses, lens post-process look and OSD overlay.",
+	"Category": "Gameplay",
+	"CreatedBy": "",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "BodycamCamera",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
