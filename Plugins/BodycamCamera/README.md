@@ -100,6 +100,60 @@ Console: `bodycam.Debug 1` (on-screen state), `bodycam.MotionScale 0.5` (global 
 - Auto-exposure *min/max* are off by default because their units depend on the project's exposure setup; enable *Override Exposure Range* if you want them.
 - Lag/overshoot and the lens effects can cause motion sickness. Ship the intensity sliders.
 
+## 8. Weapon pose: sprint lock, collision, hand grip
+
+Two components, both optional, both written without access to the engine (not yet compiled). They need only the plugin's
+`BodycamCameraComponent` and the viewmodel hierarchy. They do not touch the sway, stance or body components.
+
+### 8.1 Scene setup (once)
+
+Insert a plain scene component, the **pivot**, between the camera and the viewmodel:
+
+```
+BodycamCamera
+  WeaponPivot            <- new SceneComponent, identity transform, name must match TargetComponentName
+    ViewmodelRoot        <- (existing) sway target
+      ViewmodelArms      <- (existing)
+        Weapon           <- (existing)
+```
+
+Re-parent `ViewmodelRoot` under `WeaponPivot`. Add **Bodycam Weapon Pose Component** and **Bodycam Hand Grip Component** to the character.
+
+### 8.2 Sprint lock (R6 Siege style low ready)
+
+While ground speed >= *Sprint Speed Threshold* the weapon blends into a low-ready pose and is held in a stable frame
+(view yaw, aim pitch, **no camera bob**). The weapon follows the view pitch only while you look at or below *Lock Pitch*
+(default -15 degrees). Look higher and the weapon stays at that pitch, so it sinks out of the bottom of the frame: clear
+view, no bobbing gun. Looking down brings it back into frame, still steady.
+
+| Want | Change |
+|---|---|
+| Gun leaves the frame earlier / later | *Lock Pitch* (more negative = later) |
+| Softer corner at the lock pitch | *Lock Softness* |
+| Different low-ready pose | *Sprint Offset*, *Sprint Rotation* |
+| Aim down sights must cancel it | call `SetSprintLockSuppressed(true)` while aiming or firing |
+| Block fire / ADS while sprinting | `IsSprintLocked()` / `GetSprintAlpha()` |
+
+### 8.3 Weapon collision
+
+Five sphere sweeps from the eye to the muzzle (centre + four around the muzzle). The deepest penetration pulls the weapon
+back, tilts the muzzle up (wall or floor) or down (ceiling) and yaws it away from side walls, through springs. Set
+*Weapon Reach* to the real eye-to-muzzle distance: turn on *Debug Draw* and compare the probe tips with the barrel.
+`IsWeaponBlocked()` is true when the muzzle is buried deeper than *Blocked Threshold*; use it to refuse firing.
+Walls must block *Trace Channel* (Visibility by default).
+
+### 8.4 Hand grip
+
+After the arm animation is evaluated, a two-bone IK pins the **left** hand to *Left Hand > Grip In Weapon Space* (weapon
+space, X forward, origin at the top of the pistol grip for the AKM). The first value (32, 0, 2) is a guess: turn on
+*Debug Draw* (blue sphere = grip point) and move it until the palm sits under the handguard. *Rotation Weight* 0 keeps the
+animated hand orientation, 1 snaps it to the grip transform. The right hand is off by default because the weapon is attached
+to the right hand bone and already follows it.
+
+If your engine version does not allow bone edits in `OnBoneTransformsFinalized` (the hands will not move), use
+`GetGripWorldTransform(true)` as the effector of a **Two Bone IK** node in `ABP_Rifle_FP` (bone `hand_l`, joint target from
+the animation) and set *Alpha* on this component to 0.
+
 ## Layout
 
 ```
@@ -111,6 +165,8 @@ Source/BodycamCamera/
            BodycamOSDWidget.h            REC / timestamp overlay base class
            BodycamViewmodelSwayComponent.h
   Private/ *.cpp
+           BodycamWeaponPoseComponent.h  sprint lock + weapon collision (section 8)
+           BodycamHandGripComponent.h    hand IK onto the weapon (section 8)
 Docs/HLSL/BodycamLens.hlsl               post-process shader (Custom node body)
 Scripts/CreateBodycamMaterial.py         editor script that builds the material
 ```
